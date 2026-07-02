@@ -1,2 +1,0 @@
-- [Project architecture](project-arch.md) — React/Vite (port 5000) + Express backend (port 3131) + CLI Python + Telegram bot + Swarm multi-agent system
-- [Bug audit 2026-06-11](bug-audit-2026-06-11.md) — Full bug audit completed; 16 bugs fixed across all modules
