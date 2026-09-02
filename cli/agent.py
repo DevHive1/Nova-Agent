@@ -10,8 +10,11 @@ import shutil
 from pathlib import Path
 from datetime import datetime
 
-from cli.ui import clr, C, info, ok, warn, err, thought, tool_ev, step_ev, result_ev, print_banner
-from cli.tools import (
+# Fix Python path for relative imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from ui import clr, C, info, ok, warn, err, thought, tool_ev, step_ev, result_ev, print_banner
+from tools import (
     CWD, _bg_procs, execute_tool, list_processes, kill_process,
     cd, screenshot, UPLOAD_DIR, resolve
 )
@@ -191,6 +194,10 @@ def ask_ollama(messages):
         }, timeout=300)
         r.raise_for_status()
         return r.json()["message"]["content"]
+    except requests.exceptions.ConnectionError as e:
+        return json.dumps({"thought": "API error", "final": f"Ollama is not running. Please start Ollama first: 'ollama serve' then 'ollama pull {MODEL}'"})
+    except requests.exceptions.Timeout as e:
+        return json.dumps({"thought": "API error", "final": f"Ollama timeout: {e}"})
     except Exception as e:
         return json.dumps({"thought": "API error", "final": f"Ollama error: {e}"})
 
@@ -413,7 +420,7 @@ def main():
             continue
 
         if lo == "/tools":
-            from cli.tools import TOOL_MAP
+            from tools import TOOL_MAP
             print("\n  " + "\n  ".join(f"• {t}" for t in sorted(TOOL_MAP.keys())) + "\n")
             continue
 

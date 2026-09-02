@@ -61,3 +61,5 @@ error.txt
 .local/
 *.png
 
+*.pyc
+__pycache__/

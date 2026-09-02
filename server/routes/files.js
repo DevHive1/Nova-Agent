@@ -110,6 +110,11 @@ router.post("/screenshot", async (req, res) => {
 // Uploads
 router.post("/upload", express.raw({ type: "image/*", limit: "20mb" }), (req, res) => {
   try {
+    // Validate file size
+    if (req.headers["content-length"] && parseInt(req.headers["content-length"]) > 20 * 1024 * 1024) {
+      return res.status(413).json({ error: "File too large. Maximum 20MB allowed." });
+    }
+    
     const ext = (req.headers["content-type"] || "image/png").split("/")[1]?.split(";")[0] || "png";
     const name = `upload_${Date.now()}.${ext}`;
     const dest = path.join(UPLOAD_DIR, name);
@@ -124,7 +129,19 @@ router.post("/upload/base64", express.json({ limit: "20mb" }), (req, res) => {
   try {
     const { data, ext = "png", name: reqName } = req.body;
     if (!data) return res.status(400).json({ error: "No data" });
-    const buf = Buffer.from(data.replace(/^data:[^;]+;base64,/, ""), "base64");
+    
+    // Validate base64 data
+    if (typeof data !== "string") {
+      return res.status(400).json({ error: "Data must be a base64 string" });
+    }
+    
+    // Check data size before processing
+    const base64Data = data.replace(/^data:[^;]+;base64,/, "");
+    if (base64Data.length > 20 * 1024 * 1024) {
+      return res.status(413).json({ error: "File too large. Maximum 20MB allowed." });
+    }
+    
+    const buf = Buffer.from(base64Data, "base64");
     const name = reqName || `upload_${Date.now()}.${ext}`;
     const dest = path.join(UPLOAD_DIR, name);
     fs.writeFileSync(dest, buf);

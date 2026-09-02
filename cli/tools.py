@@ -12,7 +12,10 @@ import threading
 from pathlib import Path
 from datetime import datetime
 
-from cli.ui import ok, warn, err, info, clr, C
+# Fix Python path for relative imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from ui import ok, warn, err, info, clr, C
 
 try:
     import requests
@@ -30,13 +33,14 @@ DANGEROUS_PATTERNS = [
     r"sudo\s+rm"
 ]
 
-SCREENSHOT_DIR = Path(".screenshots")
+SCREENSHOT_DIR = Path(__file__).parent.parent / ".screenshots"
 SCREENSHOT_DIR.mkdir(exist_ok=True)
 
-UPLOAD_DIR = Path(".uploads")
+UPLOAD_DIR = Path(__file__).parent.parent / ".uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-CWD = [str(Path.cwd())]  # mutable list to allow updates in other modules
+# Initialize CWD to the project root (parent of cli directory)
+CWD = [str(Path(__file__).parent.parent)]  # mutable list to allow updates in other modules
 
 _bg_procs = {}
 _bg_id = [0]
