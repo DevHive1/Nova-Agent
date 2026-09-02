@@ -28,7 +28,68 @@ if (!TOKEN) {
 }
 
 //  BOT INIT 
-const bot = new TelegramBot(TOKEN, { polling: true });
+const USE_WEBHOOK = process.env.USE_WEBHOOK === 'true' || false;
+const WEBHOOK_URL = process.env.WEBHOOK_URL || null;
+
+const botOptions = USE_WEBHOOK ? { webhook: true } : { polling: true };
+const bot = new TelegramBot(TOKEN, botOptions);
+
+
+// ============================================================
+//  WEBHOOK SETUP
+// ============================================================
+
+/**
+ * Setup webhook for the bot
+ */
+async function setupWebhook() {
+  if (!USE_WEBHOOK || !WEBHOOK_URL) {
+    console.log('⚠️  Webhook mode disabled, using polling');
+    return;
+  }
+
+  try {
+    const webhookPath = process.env.TELEGRAM_WEBHOOK_PATH || '/webhook/telegram';
+    const fullUrl = WEBHOOK_URL + webhookPath;
+    const secret = process.env.TELEGRAM_WEBHOOK_SECRET || null;
+    
+    console.log('⚡  Setting up webhook:', fullUrl);
+    
+    // Set webhook via Telegram API
+    const setWebhookUrl = `https://api.telegram.org/bot${TOKEN}/setWebhook`;
+    
+    const response = await fetch(setWebhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: fullUrl,
+        secret_token: secret,
+        max_connections: 40,
+        drop_pending_updates: true
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.ok) {
+      console.log('✅  Webhook set successfully:', fullUrl);
+    } else {
+      console.error('❌  Webhook setup failed:', result.description);
+      // Fallback to polling
+      console.log('⚠️  Falling back to polling mode');
+    }
+  } catch (err) {
+    console.error('❌  Webhook setup error:', err.message);
+    console.log('⚠️  Falling back to polling mode');
+  }
+}
+
+// Setup webhook on startup
+if (USE_WEBHOOK) {
+  setupWebhook().catch(err => {
+    console.error('❌  Webhook initialization error:', err.message);
+  });
+}
 
 //  STATE MANAGEMENT WITH CLEANUP 
 const sessions = new Map();  // chatId  { model, persona, running, abortCtrl, lastActivity }

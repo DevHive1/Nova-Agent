@@ -1,9 +1,16 @@
 // ============================================================
+  
+  // Cache the response
+  if (response && !options.noCache) {
+    await ollamaCache.set(messages, model, response);
+  }
 //  server/lib/ollama.js    Ollama HTTP client with retry logic and caching
 // ============================================================
 
 const http = require("http");
 const https = require("https");
+
+const { ollamaCache } = require('./cache');
 const { OLLAMA_URL, DEFAULT_MODEL } = require("../../shared/constants");
 
 const OLLAMA_RETRY_MAX = 3;

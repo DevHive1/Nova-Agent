@@ -1,38 +1,39 @@
 // ============================================================
-//  server/index.js    Main Server Entry Point
+//  server/index.ts    Main Server Entry Point (TypeScript)
 // ============================================================
 
 // Load .env file when running locally (Replit uses its own Secrets panel)
 try { require("dotenv").config(); } catch {}
 
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
-const http = require("http");
-const helmet = require("helmet");
-const rateLimit = require("express-rate-limit");
-const compression = require("compression");
+import express, { Express, Request, Response, NextFunction } from "express";
+import cors from "cors";
+import path from "path";
+import http from "http";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import compression from "compression";
 
 // Initialize cache and performance monitoring
-const { initCache } = require("./lib/cache");
-const { startPerformanceMonitoring, performanceMiddleware } = require("./lib/performance");
+import { initCache, getCacheStats } from "./lib/cache";
+import { startPerformanceMonitoring, performanceMiddleware, getMetrics } from "./lib/performance";
 
-const { router: stateRouter } = require("./routes/state");
-const { router: workspaceRouter } = require("./routes/workspace");
-const { router: filesRouter, UPLOAD_DIR } = require("./routes/files");
-const agentRouter = require("./routes/agent");
-const swarmRouter = require("./routes/swarm");
-const processesRouter = require("./routes/processes");
-const webhooksRouter = require("./routes/webhooks");
-const { initTerminal } = require("./routes/terminal");
-const { SCREENSHOT_DIR } = require("./tools/screenshot");
+// Import routers
+import stateRouter from "./routes/state";
+import workspaceRouter from "./routes/workspace";
+import filesRouter from "./routes/files";
+import { UPLOAD_DIR } from "./routes/files";;
+import agentRouter from "./routes/agent";
+import swarmRouter from "./routes/swarm";
+import processesRouter from "./routes/processes";
+import { initTerminal } from "./routes/terminal";;
+import { SCREENSHOT_DIR } from "./tools/screenshot";
 
-const app = express();
-const PORT = parseInt(process.env.PORT) || 3131;
+const app: Express = express();
+const PORT: number = parseInt(process.env.PORT || "3131");
 
-//  SECURITY CONFIGURATION 
+//  SECURITY CONFIGURATION 
 // Configure allowed origins for CORS
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+const ALLOWED_ORIGINS: string[] = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",")
   : ["http://localhost:5000", "http://localhost:3131", "http://127.0.0.1:5000", "http://127.0.0.1:3131"];
 
@@ -70,7 +71,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 // Performance monitoring middleware
 app.use(performanceMiddleware());
 
-//  STATIC SERVERS 
+//  STATIC SERVERS 
 app.use("/.screenshots", express.static(SCREENSHOT_DIR));
 app.use("/.uploads", express.static(UPLOAD_DIR));
 
@@ -83,12 +84,13 @@ app.use("/api", swarmRouter);
 app.use("/api", processesRouter);
 
 // Webhook routes (must be before catch-all routes)
-app.use("/", webhooksRouter);
+import { router as webhooksRouter } from "./routes/webhooks";
+app.use("/", webhooksRouter as any);
 
-//  HEALTH CHECK ENDPOINT 
-app.get("/health", async (req, res) => {
-  const cacheStats = await require("./lib/cache").getCacheStats();
-  const perfStats = require("./lib/performance").getMetrics();
+//  HEALTH CHECK ENDPOINT 
+app.get("/health", async (req: Request, res: Response) => {
+  const cacheStats = await getCacheStats();
+  const perfStats = getMetrics();
   
   res.json({
     status: "ok",
@@ -110,45 +112,42 @@ app.get("/health", async (req, res) => {
   });
 });
 
-//  PERFORMANCE METRICS ENDPOINT 
-app.get("/api/metrics", (req, res) => {
-  const perf = require("./lib/performance");
-  res.json(perf.getMetrics());
+//  PERFORMANCE METRICS ENDPOINT 
+app.get("/api/metrics", (req: Request, res: Response) => {
+  res.json(getMetrics());
 });
 
-//  CACHE MANAGEMENT ENDPOINTS 
-app.get("/api/cache/stats", async (req, res) => {
-  const stats = await require("./lib/cache").getCacheStats();
+//  CACHE MANAGEMENT ENDPOINTS 
+app.get("/api/cache/stats", async (req: Request, res: Response) => {
+  const stats = await getCacheStats();
   res.json(stats);
 });
 
-app.post("/api/cache/clear", async (req, res) => {
-  const cleared = await require("./lib/cache").clearCache();
+app.post("/api/cache/clear", async (req: Request, res: Response) => {
+  const { clearCache } = require("./lib/cache");
+  const cleared = await clearCache();
   res.json({ ok: cleared });
 });
 
 //  ERROR HANDLING MIDDLEWARE 
 // 404 handler
-app.use((req, res) => {
+app.use((req: Request, res: Response) => {
   res.status(404).json({ error: "Not Found", path: req.path });
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error("Server Error:", err.message, err.stack);
-  res.status(err.status || 500).json({
+  res.status(500).json({
     error: process.env.NODE_ENV === "development" ? err.message : "Internal Server Error",
     path: req.path,
   });
 });
 
 //  START SERVER 
-async function startServer() {
+async function startServer(): Promise<void> {
   // Initialize cache
   const cacheInitialized = await initCache();
-  
-  // Initialize webhooks (bot will be passed from telegram/bot.js)
-  // Note: Webhooks need to be initialized after bot is created
   if (cacheInitialized) {
     console.log("\u2705 Redis cache initialized");
   } else {
@@ -176,4 +175,4 @@ async function startServer() {
 // Start the server
 startServer();
 
-module.exports = app;
+export default app;
